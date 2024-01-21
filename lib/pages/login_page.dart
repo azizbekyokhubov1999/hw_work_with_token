@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hw_work_with_token/pages/home_page.dart';
+import 'package:hw_work_with_token/services/locale_storage.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,35 +17,51 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
 
-  final TextEditingController usernameController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+   TextEditingController usernameController = TextEditingController();
+   TextEditingController passwordController = TextEditingController();
+   bool isLoading = true;
 
-  Future<void> loginUser() async {
-    final url = Uri.parse('https://dummyjson.com/auth/login');
-    final response = await http.post(url, body: {
-      'username': usernameController.text,
-      'password': passwordController.text,
-    });
+  // Future<void> loginUser() async {
+  //   final url = Uri.parse('https://dummyjson.com/auth/login');
+  //   final response = await http.post(url, body: {
+  //     'username': usernameController.text,
+  //     'password': passwordController.text,
+  //   });
+  //
+  //   if (response.statusCode == 200) {
+  //     final Map<String, dynamic> responseData = json.decode(response.body);
+  //     final String userToken = responseData['token'];
+  //
+  //     final Box<String> hiveBox = await Hive.openBox<String>('user_token_box');
+  //     await hiveBox.put('user_token', userToken);
+  //     Navigator.pushReplacementNamed(context, '/home_page');
+  //   } else {
+  //     print('Login failed. Status code: ${response.statusCode}');
+  //     const AlertDialog(
+  //       content: Text('Login failed'),
+  //     );
+  //   }
+  // }
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseData = json.decode(response.body);
-      final String userToken = responseData['token'];
-
-      final Box<String> hiveBox = await Hive.openBox<String>('user_token_box');
-      await hiveBox.put('user_token', userToken);
-      Navigator.pushReplacementNamed(context, '/home_page');
-    } else {
-      print('Login failed. Status code: ${response.statusCode}');
-      const AlertDialog(
-        content: Text('Login failed'),
-      );
-    }
-  }
+   Future<void> check(String name, String password) async{
+     isLoading = false;
+     final url = Uri.parse('https://dummyjson.com/auth/login');
+     final response = await http.post(url, body: {
+        'username': name,
+        'password': password,
+        });
+     if(name.isNotEmpty && password.isNotEmpty){
+       await AppStorage.write(StorageKey.token, "userToken").then((value) {
+         isLoading = true;
+       });
+     }
+   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
+      body: isLoading ?
+      Padding(
         padding: const EdgeInsets.symmetric(horizontal: 45),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -96,7 +114,15 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 MaterialButton(
                   onPressed: () async {
-                    await loginUser();
+                    await check(usernameController.text, passwordController.text).then((value){
+                      if(isLoading){
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text("Muvofaqiyatli kirildi")
+                            ));
+                        Navigator.pushReplacementNamed(context, HomePage.id);
+                      }
+                    });
                   },
                   color: Colors.blue,
                   shape: OutlineInputBorder(
@@ -117,7 +143,9 @@ class _LoginPageState extends State<LoginPage> {
             )
           ],
         ),
-      ),
+      ) : const Center(
+        child: CircularProgressIndicator(),
+      )
     );
   }
 }
